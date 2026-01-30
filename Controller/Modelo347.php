@@ -415,7 +415,7 @@ class Modelo347 extends Controller
      */
     protected function getInvoiceSql(string $tableName, string $codeField): string
     {
-        $sql = 'SELECT ' . $codeField . ', cifnif, EXTRACT(MONTH FROM fecha) as mes, sum(total) as total'
+        $sql = 'SELECT ' . $codeField . ', cifnif, EXTRACT(MONTH FROM fecha) as mes, sum(total + COALESCE(totalirpf, 0) - COALESCE(totalsuplidos, 0)) as total'
             . ' FROM ' . $tableName
             . ' INNER JOIN series ON ' . $tableName . '.codserie = series.codserie AND COALESCE(series.siniva, false) = false'
             . $this->getInvoiceSqlWhere($tableName);
