@@ -1,7 +1,7 @@
 <?php
 /**
  * This file is part of Modelo347 plugin for FacturaScripts
- * Copyright (C) 2020-2025 Carlos Garcia Gomez <carlos@facturascripts.com>
+ * Copyright (C) 2020-2026 Carlos Garcia Gomez <carlos@facturascripts.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -23,7 +23,6 @@ use FacturaScripts\Core\DataSrc\Paises;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Model\Ejercicio;
 use FacturaScripts\Dinamic\Model\Empresa;
-use FacturaScripts\Dinamic\Model\Pais;
 
 class Txt347Export
 {
@@ -44,6 +43,7 @@ class Txt347Export
 
     public static function export(string $codejercicio, array $customersData, array $suppliersData): string
     {
+        self::$total = 0.0;
         self::$customersData = $customersData;
         self::$suppliersData = $suppliersData;
         self::loadExercise($codejercicio);
@@ -87,7 +87,7 @@ class Txt347Export
         return self::formatString('', 17, ' ', STR_PAD_RIGHT);
     }
 
-    protected static function formatAmount(float $amount, int $length, int $align): string
+    public static function formatAmount(float $amount, int $length, int $align): string
     {
         $signed = ($amount < 0.00) ? 'N' : ' ';
         // forzamos al formato de 2 decimales sin signo y sin separador de decimales
@@ -96,19 +96,23 @@ class Txt347Export
         return $signed . self::formatString($amount, $length - 1, '0', $align);
     }
 
-    protected static function formatOnlyNumber(string $number): string
+    public static function formatOnlyNumber(?string $number): string
     {
+        if (empty($number)) {
+            return '';
+        }
+
         // eliminamos cualquier carácter que no sea un número
         return preg_replace('/[^0-9]/', '', $number);
     }
 
-    protected static function formatString(string $string, int $length, string $charter, int $align): string
+    public static function formatString(string $string, int $length, string $charter, int $align): string
     {
         // eliminamos los acentos y caracteres especiales
         $string = self::sanitize($string);
 
         // pasamos el string a mayúsculas
-        $string = strtoupper($string);
+        $string = mb_strtoupper($string, 'UTF-8');
 
         // limitamos el tamaño del string
         $string = self::limitString($string, $length);
@@ -137,7 +141,7 @@ class Txt347Export
             . self::formatString('', 1, ' ', STR_PAD_LEFT)
             . self::formatString('', 1, ' ', STR_PAD_LEFT) // DECLARACIÓN COMPLEMENTARIA O SUSTITUTIVA
             . self::formatString('', 13, '0', STR_PAD_RIGHT) // NÚMERO IDENTIFICATIVO DE LA DECLARACIÓN ANTERIOR
-            . self::formatString(count(self::$customersData) + count(self::$suppliersData), 9, '0', STR_PAD_LEFT) // NÚMERO TOTAL DE PERSONAS Y ENTIDADES
+            . self::formatString((string)(count(self::$customersData) + count(self::$suppliersData)), 9, '0', STR_PAD_LEFT) // NÚMERO TOTAL DE PERSONAS Y ENTIDADES
             . self::formatAmount(self::$total, 16, STR_PAD_LEFT) // IMPORTE TOTAL ANUAL DE LAS OPERACIONES
             . self::formatString('', 9, '0', STR_PAD_RIGHT) // NÚMERO TOTAL DE INMUEBLES
             . self::formatAmount(0.00, 16, STR_PAD_LEFT) // IMPORTE TOTAL ANUAL DE LAS OPERACIONES DE ARRENDAMIENTO DE LOCALES DE NEGOCIO
@@ -190,11 +194,6 @@ class Txt347Export
         return $txt;
     }
 
-    protected static function getDecimal($number): int
-    {
-        return ((float)$number - (int)$number) * 100;
-    }
-
     protected static function loadExercise(string $codejercicio): void
     {
         self::$exercise = new Ejercicio();
@@ -203,17 +202,24 @@ class Txt347Export
 
     protected static function getPais(string $codpais): string
     {
-        $paisModel = new Pais();
-        if ($paisModel->load($codpais) && $paisModel->codiso !== 'ES') {
-            return self::formatString($paisModel->codiso, 2, '', STR_PAD_LEFT);
+        $pais = Paises::get($codpais);
+        if (!empty($pais->codiso) && strtoupper($pais->codiso) !== 'ES') {
+            return self::formatString($pais->codiso, 2, ' ', STR_PAD_LEFT);
         }
 
         return self::formatString('', 2, ' ', STR_PAD_LEFT);
     }
 
-    protected static function getProvincia(?string $provincia): string
+    public static function getProvincia(?string $provincia): string
     {
-        switch (strtolower($provincia)) {
+        if (empty($provincia)) {
+            return '99';
+        }
+
+        $provincia = trim(self::sanitize($provincia));
+        $provincia = mb_strtolower($provincia, 'UTF-8');
+
+        switch ($provincia) {
             case 'araba':
             case 'alava':
             case 'álava':
@@ -444,7 +450,7 @@ class Txt347Export
         return substr($string, 0, $length);
     }
 
-    protected static function sanitize(?string $txt): string
+    public static function sanitize(?string $txt): string
     {
         $changes = ['/à/' => 'a', '/á/' => 'a', '/â/' => 'a', '/ã/' => 'a', '/ä/' => 'a',
             '/å/' => 'a', '/æ/' => 'ae', '/ç/' => 'c', '/è/' => 'e', '/é/' => 'e', '/ê/' => 'e',
