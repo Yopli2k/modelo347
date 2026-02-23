@@ -1,7 +1,7 @@
 <?php
 /**
  * This file is part of Modelo347 plugin for FacturaScripts
- * Copyright (C) 2020-2025 Carlos Garcia Gomez <carlos@facturascripts.com>
+ * Copyright (C) 2020-2026 Carlos Garcia Gomez <carlos@facturascripts.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -20,10 +20,10 @@
 namespace FacturaScripts\Plugins\Modelo347\Controller;
 
 use FacturaScripts\Core\Base\Controller;
-use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\DataSrc\Ejercicios;
 use FacturaScripts\Core\DataSrc\Empresas;
 use FacturaScripts\Core\Tools;
+use FacturaScripts\Core\Where;
 use FacturaScripts\Dinamic\Lib\Export\XLSExport;
 use FacturaScripts\Dinamic\Model\Cliente;
 use FacturaScripts\Dinamic\Model\Cuenta;
@@ -252,29 +252,25 @@ class Modelo347 extends Controller
         $this->loadCustomersData();
         $this->loadSuppliersData();
 
-        // creamos el archivo txt
-        $exportFile = FS_FOLDER . '/MyFiles/modelo_347_' . $this->codejercicio . '.347';
-        if (false === file_put_contents($exportFile, Txt347Export::export($this->codejercicio, $this->customersData, $this->suppliersData))) {
-            Tools::log()->error('cant-save-file', ['%fileName%' => $exportFile]);
-            return;
-        }
+        // generamos el contenido del archivo
+        $fileName = 'modelo_347_' . $this->codejercicio . '.347';
+        $content = Txt347Export::export($this->codejercicio, $this->customersData, $this->suppliersData);
 
-        // descargamos el archivo
-        $this->response->headers->set('Content-Type', 'text/plain; charset=ISO-8859-1');
-        $this->response->headers->set('Content-Disposition', 'attachment; filename="' . basename($exportFile) . '"');
-        $this->response->headers->set('Pragma', 'no-cache');
-        $this->response->headers->set('Expires', '0');
-        $this->response->setContent(file_get_contents($exportFile));
-
-        // eliminamos el archivo
-        unlink($exportFile);
+        // devolvemos el archivo directamente
+        $this->response
+            ->header('Content-Type', 'text/plain; charset=ISO-8859-1')
+            ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0')
+            ->setContent($content);
     }
 
     protected function getAccountingInfo(Cuenta $cuenta, string $column): array
     {
         $ejercicio = Ejercicios::get($this->codejercicio);
 
-        if (strtolower(FS_DB_TYPE) == 'postgresql') {
+        $dbType = Tools::config('db_type');
+        if (strtolower($dbType) == 'postgresql') {
             $sql = "select idsubcuenta, codsubcuenta, to_char(fecha,'FMMM') as mes, sum(" . $column . ") as total from partidas p, asientos a"
                 . " where idsubcuenta IN (select idsubcuenta from subcuentas where idcuenta = " . $this->dataBase->var2str($cuenta->idcuenta) . ")"
                 . " and p.idasiento = a.idasiento"
@@ -314,15 +310,15 @@ class Modelo347 extends Controller
         // buscamos las cuentas especiales de clientes de este ejercicio
         $cuentaModel = new Cuenta();
         $where = [
-            new DataBaseWhere('codejercicio', $this->codejercicio),
-            new DataBaseWhere('codcuentaesp', 'CLIENT')
+            Where::eq('codejercicio', $this->codejercicio),
+            Where::eq('codcuentaesp', 'CLIENT'),
         ];
         foreach ($cuentaModel->all($where, [], 0, 0) as $cuenta) {
             // buscamos las partidas de las subcuentas de esta cuenta
             foreach ($this->getAccountingInfo($cuenta, 'debe') as $row) {
                 // buscamos el cliente de la subcuenta
                 $cliente = new Cliente();
-                $where = [new DataBaseWhere('codsubcuenta', $row['codsubcuenta'])];
+                $where = [Where::eq('codsubcuenta', $row['codsubcuenta'])];
                 if (false === $cliente->loadWhere($where)) {
                     // no se ha encontrado el cliente, saltamos
                     continue;
@@ -448,15 +444,15 @@ class Modelo347 extends Controller
         // buscamos las cuentas especiales de proveedores de este ejercicio
         $cuentaModel = new Cuenta();
         $where = [
-            new DataBaseWhere('codejercicio', $this->codejercicio),
-            new DataBaseWhere('codcuentaesp', 'PROVEE,ACREED', 'IN')
+            Where::eq('codejercicio', $this->codejercicio),
+            Where::in('codcuentaesp', ['PROVEE', 'ACREED']),
         ];
         foreach ($cuentaModel->all($where, [], 0, 0) as $cuenta) {
             // consultamos las partidas de cada subcuenta hija
             foreach ($this->getAccountingInfo($cuenta, 'haber') as $row) {
                 // buscamos el proveedor de la subcuenta
                 $proveedor = new Proveedor();
-                $where = [new DataBaseWhere('codsubcuenta', $row['codsubcuenta'])];
+                $where = [Where::eq('codsubcuenta', $row['codsubcuenta'])];
                 if (false === $proveedor->loadWhere($where)) {
                     // no existe, saltamos
                     continue;

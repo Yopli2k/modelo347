@@ -53,7 +53,7 @@ class Txt347Export
         $supplierData = self::getSupplierData();
         $companyData = self::getCompanyData();
 
-        return $companyData . $customerData . $supplierData;
+        return mb_convert_encoding($companyData . $customerData . $supplierData, 'ISO-8859-1', 'UTF-8');
     }
 
     protected static function checkCifNif(array $item): string

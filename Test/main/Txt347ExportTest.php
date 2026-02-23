@@ -356,6 +356,32 @@ final class Txt347ExportTest extends TestCase
         $this->assertEquals(500, strlen($lines[0]));
     }
 
+    // -------------------------------------------------------------------------
+    // export() — codificación ISO-8859-1
+    // -------------------------------------------------------------------------
+
+    public function testExportEncodingIsISO88591(): void
+    {
+        $exercise = $this->getFirstExercise();
+        if ($exercise === null) {
+            $this->markTestSkipped('No hay ejercicios disponibles');
+        }
+
+        $customer = $this->sampleCustomer();
+        $customer['cliente'] = 'Empresa Española SL';
+
+        $result = Txt347Export::export($exercise->codejercicio, [$customer], []);
+
+        // El contenido no debe ser UTF-8 válido (la Ñ en ISO-8859-1 rompe la secuencia UTF-8)
+        $this->assertFalse(
+            mb_check_encoding($result, 'UTF-8'),
+            'El contenido exportado no debe estar en UTF-8'
+        );
+
+        // La Ñ debe estar codificada como el byte 0xD1 (ISO-8859-1)
+        $this->assertStringContainsString("\xD1", $result, 'La Ñ debe estar codificada como byte 0xD1 (ISO-8859-1)');
+    }
+
     protected function tearDown(): void
     {
         $this->logErrors();
