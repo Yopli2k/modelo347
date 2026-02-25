@@ -138,6 +138,14 @@ class Txt347Export
         self::$company->load(self::$exercise->idempresa);
     }
 
+    protected static function getJustificante(): string
+    {
+        // La AEAT exige que el número de justificante no sea todo ceros para presentación por fichero.
+        // Formato: modelo (347) + ejercicio (4 dígitos) + secuencial (6 dígitos), p.ej. 3472025000001
+        $year = date('Y', strtotime(self::$exercise->fechainicio));
+        return '347' . $year . '000001';
+    }
+
     protected static function getCompanyData(): string
     {
         return '1' // TIPO DE REGISTRO
@@ -148,7 +156,7 @@ class Txt347Export
             . 'T' // TIPO DE SOPORTE
             . self::formatString(self::formatOnlyNumber(self::$company->telefono1), 9, '0', STR_PAD_LEFT)
             . self::formatString(self::$company->administrador, 40, ' ', STR_PAD_RIGHT) // PERSONA CON QUIÉN RELACIONARSE
-            . self::formatString('', 13, '0', STR_PAD_LEFT) // NÚMERO IDENTIFICATIVO DE LA DECLARACIÓN
+            . self::getJustificante() // NÚMERO IDENTIFICATIVO DE LA DECLARACIÓN
             . self::formatString('', 1, ' ', STR_PAD_LEFT)
             . self::formatString('', 1, ' ', STR_PAD_LEFT) // DECLARACIÓN COMPLEMENTARIA O SUSTITUTIVA
             . self::formatString('', 13, '0', STR_PAD_LEFT) // NÚMERO IDENTIFICATIVO DE LA DECLARACIÓN ANTERIOR
