@@ -38,14 +38,26 @@ class Txt347Export
     /** @var array */
     protected static $suppliersData;
 
+    /** @var string */
+    protected static $declarationType = '';
+
+    /** @var string */
+    protected static $justificante = '';
+
+    /** @var string */
+    protected static $justificanteAnterior = '';
+
     /** @var float */
     protected static $total = 0.0;
 
-    public static function export(string $codejercicio, array $customersData, array $suppliersData): string
+    public static function export(string $codejercicio, array $customersData, array $suppliersData, string $justificante = '', string $declarationType = '', string $justificanteAnterior = ''): string
     {
         self::$total = 0.0;
         self::$customersData = $customersData;
         self::$suppliersData = $suppliersData;
+        self::$justificante = $justificante;
+        self::$declarationType = $declarationType;
+        self::$justificanteAnterior = $justificanteAnterior;
         self::loadExercise($codejercicio);
         self::loadCompany();
 
@@ -140,6 +152,11 @@ class Txt347Export
 
     protected static function getJustificante(): string
     {
+        // Si el usuario ha proporcionado un justificante, lo usamos (ya validado en el controlador)
+        if (!empty(self::$justificante)) {
+            return self::formatString(self::$justificante, 13, '0', STR_PAD_LEFT);
+        }
+
         // La AEAT exige que el número de justificante no sea todo ceros para presentación por fichero.
         // Formato: modelo (347) + ejercicio (4 dígitos) + secuencial (6 dígitos), p.ej. 3472025000001
         $year = date('Y', strtotime(self::$exercise->fechainicio));
@@ -158,8 +175,8 @@ class Txt347Export
             . self::formatString(self::$company->administrador, 40, ' ', STR_PAD_RIGHT) // PERSONA CON QUIÉN RELACIONARSE
             . self::getJustificante() // NÚMERO IDENTIFICATIVO DE LA DECLARACIÓN
             . self::formatString('', 1, ' ', STR_PAD_LEFT)
-            . self::formatString('', 1, ' ', STR_PAD_LEFT) // DECLARACIÓN COMPLEMENTARIA O SUSTITUTIVA
-            . self::formatString('', 13, '0', STR_PAD_LEFT) // NÚMERO IDENTIFICATIVO DE LA DECLARACIÓN ANTERIOR
+            . self::formatString(self::$declarationType, 1, ' ', STR_PAD_RIGHT) // DECLARACIÓN COMPLEMENTARIA O SUSTITUTIVA
+            . self::formatString(self::$justificanteAnterior, 13, '0', STR_PAD_LEFT) // NÚMERO IDENTIFICATIVO DE LA DECLARACIÓN ANTERIOR
             . self::formatString((string)(count(self::$customersData) + count(self::$suppliersData)), 9, '0', STR_PAD_LEFT) // NÚMERO TOTAL DE PERSONAS Y ENTIDADES
             . self::formatAmount(self::$total, 16, STR_PAD_LEFT) // IMPORTE TOTAL ANUAL DE LAS OPERACIONES
             . self::formatString('', 9, '0', STR_PAD_LEFT) // NÚMERO TOTAL DE INMUEBLES

@@ -8,6 +8,12 @@
             document.forms['modelo347']['activetab'].value = tab;
             document.forms['modelo347'].submit();
         }
+
+        function toggleDeclarationType() {
+            const type = document.getElementById('declarationtype').value;
+            const prevGroup = document.getElementById('justificante-anterior-group');
+            prevGroup.style.display = (type === 'C' || type === 'S') ? '' : 'none';
+        }
     </script>
 {% endblock %}
 
@@ -81,6 +87,39 @@
                         </select>
                     </div>
                 </div>
+                {# Declaration Type #}
+                <div class="col-sm">
+                    <div class="mb-2">
+                        {{ trans('declaration-type') }}
+                        <select name="declarationtype" id="declarationtype" class="form-select" onchange="toggleDeclarationType()">
+                            <option value="" {{ fsc.declarationType == '' ? 'selected' : '' }}>{{ trans('normal-declaration') }}</option>
+                            <option value="C" {{ fsc.declarationType == 'C' ? 'selected' : '' }}>{{ trans('complementary-declaration') }}</option>
+                            <option value="S" {{ fsc.declarationType == 'S' ? 'selected' : '' }}>{{ trans('substitutive-declaration') }}</option>
+                        </select>
+                    </div>
+                </div>
+                {# Justificante #}
+                <div class="col-sm">
+                    <div class="mb-2">
+                        {{ trans('justificante-number') }}
+                        <input type="text" name="justificante" id="justificante" value="{{ fsc.justificante }}"
+                               class="form-control" maxlength="13" pattern="[0-9]*"
+                               placeholder="3472025000001"/>
+                    </div>
+                </div>
+                {# Justificante Anterior #}
+                <div class="col-sm" id="justificante-anterior-group"
+                     style="{{ fsc.declarationType in ['C', 'S'] ? '' : 'display:none' }}">
+                    <div class="mb-2">
+                        {{ trans('previous-justificante-number') }}
+                        <input type="text" name="justificanteanterior" id="justificanteanterior"
+                               value="{{ fsc.justificanteAnterior }}"
+                               class="form-control" maxlength="13" pattern="[0-9]*"/>
+                    </div>
+                </div>
+            </div>
+            {# Fila 2: opciones y botones #}
+            <div class="row g-2 align-items-center">
                 {# Exclude IRPF Input #}
                 <div class="col-sm">
                     <div class="mb-2 form-check">
@@ -96,14 +135,14 @@
                 </div>
                 {# Buttons #}
                 <div class="col-sm-auto">
-                    <div class="btn-group" role="group">
+                    <div class="btn-group mb-2" role="group">
                         <button type="submit" name="action" value="show" class="btn btn-primary">
-                            <i class="fa-solid fa-eye fa-fw"></i> {{ trans('preview') }}
+                            <i class="fa-solid fa-eye fa-fw me-1"></i> {{ trans('preview') }}
                         </button>
                         <div class="btn-group" role="group">
                             <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown"
                                     aria-expanded="false">
-                                <i class="fa-solid fa-download fa-fw"></i> {{ trans('download') }}
+                                <i class="fa-solid fa-download fa-fw me-1"></i> {{ trans('download') }}
                             </button>
                             <div class="dropdown-menu dropdown-menu-end">
                                 <button type="submit" name="action" value="download-excel" class="dropdown-item">

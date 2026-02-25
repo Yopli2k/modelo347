@@ -62,6 +62,15 @@ class Modelo347 extends Controller
     /** @var string */
     public $grouping = 'customer-supplier';
 
+    /** @var string */
+    public $justificante = '';
+
+    /** @var string */
+    public $declarationType = '';
+
+    /** @var string */
+    public $justificanteAnterior = '';
+
     /** @var array */
     public $suppliersData = [];
 
@@ -188,6 +197,12 @@ class Modelo347 extends Controller
         $this->examine = $this->request->request->get('examine', $this->examine);
         $this->excludeIrpf = (bool)$this->request->request->get('excludeirpf', $this->excludeIrpf);
         $this->grouping = $this->request->request->get('grouping', $this->grouping);
+        $this->justificante = preg_replace('/[^0-9]/', '', $this->request->request->get('justificante', ''));
+        $this->declarationType = $this->request->request->get('declarationtype', '');
+        if (!in_array($this->declarationType, ['C', 'S'])) {
+            $this->declarationType = '';
+        }
+        $this->justificanteAnterior = preg_replace('/[^0-9]/', '', $this->request->request->get('justificanteanterior', ''));
 
         $this->loadCustomersData();
         $this->loadSuppliersData();
@@ -254,7 +269,7 @@ class Modelo347 extends Controller
 
         // generamos el contenido del archivo
         $fileName = 'modelo_347_' . $this->codejercicio . '.347';
-        $content = Txt347Export::export($this->codejercicio, $this->customersData, $this->suppliersData);
+        $content = Txt347Export::export($this->codejercicio, $this->customersData, $this->suppliersData, $this->justificante, $this->declarationType, $this->justificanteAnterior);
 
         // devolvemos el archivo directamente
         $this->response
